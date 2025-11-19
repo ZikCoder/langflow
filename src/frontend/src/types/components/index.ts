@@ -1,5 +1,5 @@
 import type { ReactFlowJsonObject } from "@xyflow/react";
-import type { ReactElement, ReactNode } from "react";
+import type { ChangeEvent, ReactElement, ReactNode } from "react";
 import type { handleOnNewValueType } from "@/CustomNodes/hooks/use-handle-new-value";
 import type { InputOutput } from "../../constants/enums";
 import type {
@@ -7,6 +7,7 @@ import type {
   APITemplateType,
   InputFieldType,
   OutputFieldProxyType,
+  OutputFieldType,
 } from "../api";
 import type { ChatMessageType } from "../chat";
 import type { sourceHandleType, targetHandleType } from "./../flow/index";
@@ -45,7 +46,7 @@ export type InputComponentType = {
   setSelectedOptions?: (value: string[]) => void;
   objectOptions?: Array<{ name: string; id: string }>;
   isObjectOption?: boolean;
-  onChangeFolderName?: (e: any) => void;
+  onChangeFolderName?: (e: ChangeEvent<HTMLInputElement>) => void;
   nodeStyle?: boolean;
   isToolMode?: boolean;
   popoverWidth?: string;
@@ -61,16 +62,16 @@ export type DropDownComponent = {
   combobox?: boolean;
   nodeId: string;
   nodeClass: APIClassType;
-  handleNodeClass: (value: any, code?: string, type?: string) => void;
+  handleNodeClass: (value: unknown, code?: string, type?: string) => void;
   options: string[];
-  optionsMetaData?: any[];
+  optionsMetaData?: Array<Record<string, unknown>>;
   onSelect: (value: string, dbValue?: boolean, snapshot?: boolean) => void;
   editNode?: boolean;
   id?: string;
   children?: ReactNode;
   name: string;
-  dialogInputs?: any;
-  externalOptions?: any;
+  dialogInputs?: Record<string, unknown>;
+  externalOptions?: unknown[];
   toggle?: boolean;
 };
 export type ParameterComponentType = {
@@ -113,8 +114,8 @@ export type NodeOutputFieldComponentType = {
   isToolMode?: boolean;
   showHiddenOutputs?: boolean;
   hidden?: boolean;
-  outputs?: any;
-  handleSelectOutput?: (output: any) => void;
+  outputs?: OutputFieldType[];
+  handleSelectOutput?: (output: OutputFieldType) => void;
 };
 
 export type NodeInputFieldComponentType = {
@@ -136,8 +137,8 @@ export type NodeInputFieldComponentType = {
 };
 
 export type IOJSONInputComponentType = {
-  value: any;
-  onChange: (value) => void;
+  value: unknown;
+  onChange: (value: unknown) => void;
   left?: boolean;
   output?: boolean;
 };
@@ -150,8 +151,8 @@ export type outputComponentType = {
   name: string;
   proxy?: OutputFieldProxyType;
   isToolMode?: boolean;
-  outputs?: any;
-  handleSelectOutput?: (output: any) => void;
+  outputs?: OutputFieldType[];
+  handleSelectOutput?: (output: OutputFieldType) => void;
   outputName?: string;
 };
 
@@ -385,9 +386,9 @@ export type ConfirmationModalType = {
     | [React.ReactElement<ContentProps>, React.ReactElement<TriggerProps>]
     | React.ReactElement<ContentProps>;
   icon?: string;
-  data?: any;
+  data?: unknown;
   index?: number;
-  onConfirm?: (index, data) => void;
+  onConfirm?: (index: number, data: unknown) => void;
   open?: boolean;
   onClose?: () => void;
   size?:
@@ -409,10 +410,10 @@ export type UserManagementType = {
   confirmationText: string;
   children: ReactElement;
   icon: string;
-  data?: any;
+  data?: unknown;
   index?: number;
   asChild?: boolean;
-  onConfirm: (index, data) => void;
+  onConfirm: (index: number, data: unknown) => void;
 };
 
 export type loginInputStateType = {
@@ -425,7 +426,7 @@ export type patchUserInputStateType = {
   cnfPassword: string;
   profilePicture: string;
   apikey: string;
-  gradient?: any;
+  gradient?: string;
 };
 
 export type UserInputType = {
@@ -440,7 +441,7 @@ export type UserInputType = {
 
 export type ApiKeyType = {
   children: ReactElement;
-  data?: any;
+  data?: unknown;
   onCloseModal?: () => void;
   modalProps?: {
     title?: string;
@@ -572,7 +573,7 @@ export type fileCardPropsType = {
 export type nodeToolbarPropsType = {
   data: NodeDataType;
   deleteNode: (idx: string) => void;
-  setShowNode: (boolean: any) => void;
+  setShowNode: (show: boolean) => void;
   numberOfOutputHandles: number;
   showNode: boolean;
   name?: string;
@@ -781,7 +782,7 @@ export type Log = {
 
 export type validationStatusType = {
   id: string;
-  data: object | any;
+  data: Record<string, unknown>;
   outputs: Log[];
   progress?: number;
   valid: boolean;
@@ -824,7 +825,7 @@ export type UndrawCardComponentProps = { flow: FlowType };
 
 export type IOFileInputProps = {
   field: InputFieldType;
-  updateValue: (e: any, type: string) => void;
+  updateValue: (e: ChangeEvent<HTMLInputElement>, type: string) => void;
 };
 
 export type toolbarSelectItemProps = {

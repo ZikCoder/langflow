@@ -24,7 +24,7 @@ import { isStringArray, tryParseJson } from "./utils";
 
 type BuildVerticesParams = {
   flowId: string; // Assuming FlowType is the type for your flow
-  input_value?: any; // Replace any with the actual type if it's not any
+  input_value?: string; // Input value for the flow
   files?: string[];
   startNodeId?: string | null; // Assuming nodeId is of type string, and it's optional
   stopNodeId?: string | null; // Assuming nodeId is of type string, and it's optional
@@ -74,7 +74,7 @@ function getInactiveVertexData(vertexId: string): VertexBuildTypeAPI {
   return inactiveVertexData;
 }
 
-function logFlowLoad(message: string, data?: any) {
+function logFlowLoad(message: string, data?: unknown) {
   console.warn(`[FlowLoad] ${message}`, data || "");
 }
 
@@ -103,7 +103,7 @@ export async function updateVerticesOrder(
         edges,
       );
       logFlowLoad("Got vertices order response:", orderResponse);
-    } catch (error: any) {
+    } catch (error: unknown) {
       logFlowLoad("Error getting vertices order:", error);
       setErrorData({
         title: MISSED_ERROR_ALERT,
@@ -145,10 +145,11 @@ export async function buildFlowVerticesWithFallback(
   try {
     // Use the event_delivery parameter directly
     return await buildFlowVertices({ ...params });
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const error = e as { message?: string };
     if (
-      e.message === POLLING_MESSAGES.ENDPOINT_NOT_AVAILABLE ||
-      e.message === POLLING_MESSAGES.STREAMING_NOT_SUPPORTED
+      error.message === POLLING_MESSAGES.ENDPOINT_NOT_AVAILABLE ||
+      error.message === POLLING_MESSAGES.STREAMING_NOT_SUPPORTED
     ) {
       // Fallback to polling
       return await buildFlowVertices({
@@ -170,7 +171,11 @@ async function pollBuildEvents(
   verticesStartTimeMs: Map<string, number>,
   callbacks: {
     onBuildStart?: (idList: VertexLayerElementType[]) => void;
-    onBuildUpdate?: (data: any, status: BuildStatus, buildId: string) => void;
+    onBuildUpdate?: (
+      data: VertexBuildTypeAPI,
+      status: BuildStatus,
+      buildId: string,
+    ) => void;
     onBuildComplete?: (allNodesValid: boolean) => void;
     onBuildError?: (
       title: string,
@@ -443,7 +448,7 @@ export async function buildFlowVertices({
  * @param {Map<string, number>} verticesStartTimeMs - Map tracking start times for vertices.
  * @param {Object} callbacks - Object containing callback functions.
  * @param {(idList: VertexLayerElementType[]) => void} [callbacks.onBuildStart] - Callback when vertices start building.
- * @param {(data: any, status: BuildStatus, buildId: string) => void} [callbacks.onBuildUpdate] - Callback for build updates.
+ * @param {(data: VertexBuildTypeAPI, status: BuildStatus, buildId: string) => void} [callbacks.onBuildUpdate] - Callback for build updates.
  * @param {(allNodesValid: boolean) => void} [callbacks.onBuildComplete] - Callback when build completes.
  * @param {(title: string, list: string[], idList?: VertexLayerElementType[]) => void} [callbacks.onBuildError] - Callback on build errors.
  * @param {() => void} [callbacks.onGetOrderSuccess] - Callback for successful ordering.
@@ -453,14 +458,18 @@ export async function buildFlowVertices({
  */
 async function onEvent(
   type: string,
-  data: any,
+  data: unknown,
   flowId: string,
   session: string,
   buildResults: boolean[],
   verticesStartTimeMs: Map<string, number>,
   callbacks: {
     onBuildStart?: (idList: VertexLayerElementType[]) => void;
-    onBuildUpdate?: (data: any, status: BuildStatus, buildId: string) => void;
+    onBuildUpdate?: (
+      data: VertexBuildTypeAPI,
+      status: BuildStatus,
+      buildId: string,
+    ) => void;
     onBuildComplete?: (allNodesValid: boolean) => void;
     onBuildError?: (
       title: string,
@@ -765,8 +774,12 @@ async function buildVertex({
   id: string;
   input_value: string;
   files?: string[];
-  onBuildUpdate?: (data: any, status: BuildStatus) => void;
-  onBuildError?: (title, list, idList: VertexLayerElementType[]) => void;
+  onBuildUpdate?: (data: VertexBuildTypeAPI, status: BuildStatus) => void;
+  onBuildError?: (
+    title: string,
+    list: string[],
+    idList: VertexLayerElementType[],
+  ) => void;
   verticesIds: string[];
   buildResults: boolean[];
   stopBuild: () => void;
@@ -778,7 +791,7 @@ async function buildVertex({
     if (onBuildUpdate) {
       if (!buildData.valid) {
         // lots is a dictionary with the key the output field name and the value the log object
-        // logs: { [key: string]: { message: any; type: string }[] };
+        // logs: { [key: string]: { message: unknown; type: string }[] };
         const errorMessages = Object.keys(buildData.data.outputs).map((key) => {
           const outputs = buildData.data.outputs[key];
           if (Array.isArray(outputs)) {
@@ -806,8 +819,10 @@ async function buildVertex({
   } catch (error) {
     console.error(error);
     let errorMessage: string | string[] =
-      (error as AxiosError<any>).response?.data?.detail ||
-      (error as AxiosError<any>).response?.data?.message ||
+      (error as AxiosError<{ detail?: string; message?: string }>).response
+        ?.data?.detail ||
+      (error as AxiosError<{ detail?: string; message?: string }>).response
+        ?.data?.message ||
       "An unexpected error occurred while building the Component. Please try again.";
     errorMessage = tryParseJson(errorMessage as string) ?? errorMessage;
     if (!Array.isArray(errorMessage)) {
