@@ -267,6 +267,13 @@ async def consume_and_yield(queue: asyncio.Queue, client_consumed_queue: asyncio
         event_id, value, put_time = await queue.get()
         if value is None:
             break
+        try:
+            if value:
+                decoded_value = value.decode("utf-8")
+                if any(event_type in decoded_value for event_type in ["RUN_STARTED", "RUN_FINISHED", "STEP_STARTED", "STEP_ENDED"]):
+                    print(f"Streaming Event: {decoded_value}")
+        except Exception:
+            pass
         get_time = time.time()
         yield value
         get_time_yield = time.time()

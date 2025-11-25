@@ -180,6 +180,7 @@ class Vertex:
 
         if isinstance(self.built_result, UnbuiltResult):
             return {}
+            print(self.built_result)
         return self.built_result if isinstance(self.built_result, dict) else {"result": self.built_result}
 
     def set_artifacts(self) -> None:

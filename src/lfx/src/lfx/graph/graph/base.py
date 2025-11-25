@@ -141,6 +141,7 @@ class Graph:
         if (start is not None and end is None) or (start is None and end is not None):
             msg = "You must provide both input and output components"
             raise ValueError(msg)
+        
 
     @property
     def lock(self):
@@ -349,6 +350,54 @@ class Graph:
         }
         self._add_edge(edge_data)
 
+    def _send_lifecycle_event(
+        self,
+        event_type: str,
+        event_manager: EventManager | None,
+        vertex_id: str | None = None,
+        error: Exception | None = None,
+        status: str | None = None,
+    ) -> None:
+        """Sends a lifecycle event using the event manager."""
+        if not event_manager:
+            return
+
+        timestamp = datetime.now(timezone.utc).isoformat()
+        
+        # Base data structure
+        data = {
+            "run_id": self._run_id,
+            "timestamp": timestamp,
+        }
+        
+        langflow_metrics = {
+            "timestamp": timestamp,
+            "run_id": self._run_id,
+        }
+
+        if event_type in ("RUN_STARTED", "RUN_FINISHED"):
+            langflow_metrics["flow_id"] = self.flow_id
+            if status:
+                langflow_metrics["status"] = status
+        
+        if event_type in ("STEP_STARTED", "STEP_ENDED"):
+            data["vertex_id"] = vertex_id
+            langflow_metrics["vertex_id"] = vertex_id
+            
+            # Get vertex type if available
+            if vertex_id:
+                vertex = self.get_vertex(vertex_id)
+                if vertex:
+                    langflow_metrics["vertex_type"] = vertex.vertex_type
+
+            if event_type == "STEP_ENDED":
+                langflow_metrics["execution_time"] = 0.0 # Placeholder as we don't track this yet here
+                langflow_metrics["error"] = str(error) if error else None
+
+        data["raw_event"] = {"langflow_metrics": langflow_metrics}
+
+        event_manager.send_event(event_type=event_type, data=data)
+
     async def async_start(
         self,
         inputs: list[dict] | None = None,
@@ -358,28 +407,35 @@ class Graph:
         *,
         reset_output_values: bool = True,
     ):
-        self.prepare()
-        if reset_output_values:
-            self._reset_all_output_values()
+        self._send_lifecycle_event("RUN_STARTED", event_manager)
+        try:
+            self.prepare()
+            if reset_output_values:
+                self._reset_all_output_values()
 
-        # The idea is for this to return a generator that yields the result of
-        # each step call and raise StopIteration when the graph is done
-        if config is not None:
-            self.__apply_config(config)
-        # I want to keep a counter of how many tyimes result.vertex.id
-        # has been yielded
-        yielded_counts: dict[str, int] = defaultdict(int)
+            # The idea is for this to return a generator that yields the result of
+            # each step call and raise StopIteration when the graph is done
+            if config is not None:
+                self.__apply_config(config)
+            # I want to keep a counter of how many tyimes result.vertex.id
+            # has been yielded
+            yielded_counts: dict[str, int] = defaultdict(int)
 
-        while should_continue(yielded_counts, max_iterations):
-            result = await self.astep(event_manager=event_manager, inputs=inputs)
-            yield result
-            if isinstance(result, Finish):
-                return
-            if hasattr(result, "vertex"):
-                yielded_counts[result.vertex.id] += 1
+            while should_continue(yielded_counts, max_iterations):
+                result = await self.astep(event_manager=event_manager, inputs=inputs)
+                yield result
+                if isinstance(result, Finish):
+                    return
+                if hasattr(result, "vertex"):
+                    yielded_counts[result.vertex.id] += 1
 
-        msg = "Max iterations reached"
-        raise ValueError(msg)
+            msg = "Max iterations reached"
+            raise ValueError(msg)
+        except Exception as e:
+            self._send_lifecycle_event("RUN_FINISHED", event_manager, status="FAILED", error=e)
+            raise e
+        finally:
+            self._send_lifecycle_event("RUN_FINISHED", event_manager, status="COMPLETED")
 
     def _snapshot(self):
         return {
@@ -422,6 +478,14 @@ class Graph:
         Returns:
             Generator yielding results from graph execution
         """
+        source_ids = set({e.source_id for e in self.edges if e})
+        last_vertices = set()
+        print(self.vertices)
+        print(self.edges)
+        for v in self.vertices:
+            if v and v.id not in source_ids:
+                last_vertices.add(v.id) 
+        print([n.id for n in last_vertices])
         if self.is_cyclic and max_iterations is None:
             msg = "You must specify a max_iterations if the graph is cyclic"
             raise ValueError(msg)
@@ -755,6 +819,16 @@ class Graph:
         Returns:
             List[Optional["ResultData"]]: The outputs of the graph.
         """
+        print("Calling _run with inputs:", inputs)
+        source_ids = set({e.source_id for e in self.edges if e})
+        last_vertices = set()
+        print(self.vertices)
+        print(self.edges)
+        for v in self.vertices:
+            if v and v.id not in source_ids:
+                last_vertices.add(v.id) 
+        print([n.id for n in last_vertices])
+        
         if input_components and not isinstance(input_components, list):
             msg = f"Invalid components value: {input_components}. Expected list"
             raise ValueError(msg)
@@ -843,6 +917,16 @@ class Graph:
         # we need to go through self.inputs and update the self.raw_params
         # of the vertices that are inputs
         # if the value is a list, we need to run multiple times
+        print("Calling arun with inputs:", inputs)
+        source_ids = set({e.source_id for e in self.edges if e})
+        last_vertices = set()
+        print(self.vertices)
+        print(self.edges)
+        for v in self.vertices:
+            if v and v.id not in source_ids:
+                last_vertices.add(v.id) 
+        print([n.id for n in last_vertices])
+
         vertex_outputs = []
         if not isinstance(inputs, list):
             inputs = [inputs]
@@ -1417,21 +1501,24 @@ class Graph:
             set_cache_func = chat_service.set_cache
         else:
             # Fallback no-op cache functions for tests or when service unavailable
-            async def get_cache_func(*args, **kwargs):  # noqa: ARG001
-                return None
-
             async def set_cache_func(*args, **kwargs) -> bool:  # noqa: ARG001
                 return True
 
-        vertex_build_result = await self.build_vertex(
-            vertex_id=vertex_id,
-            user_id=user_id,
-            inputs_dict=inputs.model_dump() if inputs and hasattr(inputs, "model_dump") else {},
-            files=files,
-            get_cache=get_cache_func,
-            set_cache=set_cache_func,
-            event_manager=event_manager,
-        )
+        self._send_lifecycle_event("STEP_STARTED", event_manager, vertex_id=vertex_id)
+        try:
+            vertex_build_result = await self.build_vertex(
+                vertex_id=vertex_id,
+                user_id=user_id,
+                inputs_dict=inputs.model_dump() if inputs and hasattr(inputs, "model_dump") else {},
+                files=files,
+                get_cache=get_cache_func,
+                set_cache=set_cache_func,
+                event_manager=event_manager,
+            )
+            self._send_lifecycle_event("STEP_ENDED", event_manager, vertex_id=vertex_id)
+        except Exception as e:
+            self._send_lifecycle_event("STEP_ENDED", event_manager, vertex_id=vertex_id, error=e)
+            raise e
 
         next_runnable_vertices = await self.get_next_runnable_vertices(
             self.lock, vertex=vertex_build_result.vertex, cache=False
