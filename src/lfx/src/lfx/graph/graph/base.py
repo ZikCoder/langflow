@@ -2134,10 +2134,10 @@ class Graph:
 
     def get_terminal_nodes(self) -> list[str]:
         """Returns vertex IDs that are terminal nodes (not source of any edge).
-        
+
         Terminal nodes are vertices that have no outgoing edges - they are not
         listed as source_id in any of the graph's edges.
-        
+
         Returns:
             list[str]: List of vertex IDs that are terminal nodes.
         """
