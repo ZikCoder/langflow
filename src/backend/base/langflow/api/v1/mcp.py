@@ -56,6 +56,8 @@ async def handle_global_call_tool(name: str, arguments: dict) -> list[types.Text
 
 
 sse = SseServerTransport("/api/v1/mcp/")
+
+
 ########################################################
 # SseServerTransport.connect_sse handles the full ASGI response internally
 # but FastAPI still expects the endpoint to return a Response,
@@ -63,29 +65,33 @@ sse = SseServerTransport("/api/v1/mcp/")
 # We use this class to return a Response that FastAPI can handle gracefully
 ########################################################
 class SSECompletedNoOp(Response):
-    async def __call__(self, scope, receive, send) -> None: # noqa: ARG002
+    async def __call__(self, scope, receive, send) -> None:  # noqa: ARG002
         # connect_sse already produced the ASGI response; nothing left to send.
         return
+
 
 # Manage state of the Streamable HTTP session manager
 streamable_http_session_manager: StreamableHTTPSessionManager | None = None
 
+
 def init_streamable_http_manager(*, stateless: bool = True) -> StreamableHTTPSessionManager:
     """Create and register a Streamable HTTP session manager for the global MCP server."""
-    global streamable_http_session_manager # noqa: PLW0603
+    global streamable_http_session_manager  # noqa: PLW0603
     streamable_http_session_manager = StreamableHTTPSessionManager(server, stateless=stateless)
     return streamable_http_session_manager
 
+
 def get_streamable_http_manager() -> StreamableHTTPSessionManager:
     """Fetch the active Streamable HTTP session manager or raise if it is unavailable."""
-    global streamable_http_session_manager # noqa: PLW0602
+    global streamable_http_session_manager  # noqa: PLW0602
     if streamable_http_session_manager is None:
         raise HTTPException(status_code=503, detail="MCP Streamable HTTP transport is not initialized")
     return streamable_http_session_manager
 
+
 def clear_streamable_http_manager() -> None:
     """Clear the currently active Streamable HTTP session manager reference."""
-    global streamable_http_session_manager # noqa: PLW0603
+    global streamable_http_session_manager  # noqa: PLW0603
     streamable_http_session_manager = None
 
 
@@ -187,6 +193,8 @@ async def _dispatch_streamable_http(
 
 
 streamable_http_methods = ["GET", "POST", "DELETE"]
+
+
 @router.api_route("/streamable", methods=streamable_http_methods)
 @router.api_route("/streamable/", methods=streamable_http_methods)
 async def handle_streamable_http(request: Request, current_user: CurrentActiveMCPUser):
