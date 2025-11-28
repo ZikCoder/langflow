@@ -180,7 +180,10 @@ async def create_flow_response(
                 try:
                     if value:
                         decoded_value = value.decode("utf-8")
-                        if any(event_type in decoded_value for event_type in ["RUN_STARTED", "RUN_FINISHED", "STEP_STARTED", "STEP_ENDED"]):
+                        if any(
+                            event_type in decoded_value
+                            for event_type in ["RUN_STARTED", "RUN_FINISHED", "STEP_STARTED", "STEP_ENDED"]
+                        ):
                             logger.debug(f"\n>>> Streaming Event: {decoded_value}\n")
                 except Exception:
                     pass
@@ -254,7 +257,7 @@ async def generate_flow_events(
 
             await chat_service.set_cache(flow_id_str, graph)
             await log_telemetry(start_time, components_count, run_id=run_id, success=True)
-            
+
             # Send RUN_STARTED event
             graph._send_lifecycle_event("RUN_STARTED", event_manager)
 
@@ -349,7 +352,7 @@ async def generate_flow_events(
                 top_level_vertices = graph.get_top_level_vertices(next_runnable_vertices)
 
                 result_data_response = ResultDataResponse.model_validate(result_dict, from_attributes=True)
-                
+
                 graph._send_lifecycle_event("STEP_ENDED", event_manager, vertex_id=vertex_id)
             except Exception as exc:  # noqa: BLE001
                 graph._send_lifecycle_event("STEP_ENDED", event_manager, vertex_id=vertex_id, error=exc)

@@ -1634,7 +1634,11 @@ class Component(CustomComponent):
 
             self._stored_message_id = stored_message.id
             try:
-                print(self._should_stream_message(stored_message, message), message is not None, isinstance(message.text, AsyncIterator | Iterator))
+                print(
+                    self._should_stream_message(stored_message, message),
+                    message is not None,
+                    isinstance(message.text, AsyncIterator | Iterator),
+                )
                 complete_message = ""
                 if (
                     self._should_stream_message(stored_message, message)

@@ -141,7 +141,6 @@ class Graph:
         if (start is not None and end is None) or (start is None and end is not None):
             msg = "You must provide both input and output components"
             raise ValueError(msg)
-        
 
     @property
     def lock(self):
@@ -364,13 +363,13 @@ class Graph:
             return
 
         timestamp = datetime.now(timezone.utc).isoformat()
-        
+
         # Base data structure
         data = {
             "run_id": self._run_id,
             "timestamp": timestamp,
         }
-        
+
         langflow_metrics = {
             "timestamp": timestamp,
             "run_id": self._run_id,
@@ -380,16 +379,16 @@ class Graph:
             langflow_metrics["flow_id"] = self.flow_id
             if status:
                 langflow_metrics["status"] = status
-        
+
         if event_type == "TEXT_CONTENT_DELTA":
             langflow_metrics["flow_id"] = self.flow_id
             data["chunk"] = chunk
             langflow_metrics["token_size"] = len(chunk)
-        
+
         if event_type in ("STEP_STARTED", "STEP_ENDED"):
             data["vertex_id"] = vertex_id
             langflow_metrics["vertex_id"] = vertex_id
-            
+
             # Get vertex type if available
             if vertex_id:
                 vertex = self.get_vertex(vertex_id)
@@ -397,7 +396,7 @@ class Graph:
                     langflow_metrics["vertex_type"] = vertex.vertex_type
 
             if event_type == "STEP_ENDED":
-                langflow_metrics["execution_time"] = 0.0 # Placeholder as we don't track this yet here
+                langflow_metrics["execution_time"] = 0.0  # Placeholder as we don't track this yet here
                 langflow_metrics["error"] = str(error) if error else None
 
         data["raw_event"] = {"langflow_metrics": langflow_metrics}
@@ -490,7 +489,7 @@ class Graph:
         # print(self.edges)
         # for v in self.vertices:
         #     if v and v.id not in source_ids:
-        #         last_vertices.add(v.id) 
+        #         last_vertices.add(v.id)
         # print([n.id for n in last_vertices])
         if self.is_cyclic and max_iterations is None:
             msg = "You must specify a max_iterations if the graph is cyclic"
@@ -832,9 +831,9 @@ class Graph:
         # print(self.edges)
         # for v in self.vertices:
         #     if v and v.id not in source_ids:
-        #         last_vertices.add(v.id) 
+        #         last_vertices.add(v.id)
         # print([n.id for n in last_vertices])
-        
+
         if input_components and not isinstance(input_components, list):
             msg = f"Invalid components value: {input_components}. Expected list"
             raise ValueError(msg)

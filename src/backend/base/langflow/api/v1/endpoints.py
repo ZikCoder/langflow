@@ -270,7 +270,10 @@ async def consume_and_yield(queue: asyncio.Queue, client_consumed_queue: asyncio
         try:
             if value:
                 decoded_value = value.decode("utf-8")
-                if any(event_type in decoded_value for event_type in ["RUN_STARTED", "RUN_FINISHED", "STEP_STARTED", "STEP_ENDED"]):
+                if any(
+                    event_type in decoded_value
+                    for event_type in ["RUN_STARTED", "RUN_FINISHED", "STEP_STARTED", "STEP_ENDED"]
+                ):
                     await logger.adebug(f"Streaming Event: {decoded_value}")
         except Exception:
             pass
