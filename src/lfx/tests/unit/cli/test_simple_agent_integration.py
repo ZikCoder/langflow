@@ -244,10 +244,10 @@ class TestSimpleAgentExecution:
             else:
                 pytest.fail("No valid JSON in output")
 
-        if output_json.get("success"):
-            result_text = str(output_json.get("result", ""))
-            # The agent should compute 15 * 7 = 105
-            assert "105" in result_text, f"Expected 105 in result: {result_text}"
+        assert output_json.get("success") is True, f"Execution failed: {output_json}"
+        result_text = str(output_json.get("result", ""))
+        # The agent should compute 15 * 7 = 105
+        assert "105" in result_text, f"Expected 105 in result: {result_text}"
 
 
 class TestSimpleAgentServe:
